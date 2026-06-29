@@ -2,18 +2,34 @@ spring:
   application:
     name: price-watch
 
-# postgresql configuration
+  # postgresql configuration
   datasource:
-    url: jdbc:postgresql://localhost:5432/price_watch
-    username: postgres
-    password: password1!
+    url: ${POSTGRES_URL:jdbc:postgresql://localhost:5432/price_watch}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:password1!}
 
-# jpa & hibernate tunning
+  # jpa & hibernate tunning
   jpa:
     hibernate:
       ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        highlight_sql: true
 
-# flyway configuration
+  # flyway configuration
   flyway:
     enabled: true
     baseline-on-migrate: true
+
+# jwt configuration
+jwt:
+  issuer: ${JWT_ISSUER:http://localhost:8080}
+  expiration: ${JWT_EXPIRATION:900000} # ms
+  refreshTokenExpiration: ${JWT_REFRESH_TOKEN_EXPIRATION:30} # days
+  secret: ${JWT_SECRET}
+
+logging:
+  level:
+    org.hibernate.orm.jdbc.bind: trace
