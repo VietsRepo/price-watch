@@ -22,44 +22,40 @@ import lombok.extern.slf4j.Slf4j;
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
-	
-	@ExceptionHandler({ BadCredentialsException.class, InternalAuthenticationServiceException.class })
-	public ResponseEntity<ErrorResponse> handleAuthenticationException(Exception ex, HttpServletRequest request) {
-		return ResponseEntity
-				.status(HttpStatus.UNAUTHORIZED)
-				.body(new ErrorResponse(
-						HttpStatus.UNAUTHORIZED.getReasonPhrase(),
-						ErrorCode.INVALID_CREDENTIALS.name(),
-						ErrorCode.INVALID_CREDENTIALS.getMessage(),
-						request.getRequestURI(),
-						LocalDateTime.now()
-					)
-				);
+
+	@ExceptionHandler(BadCredentialsException.class)
+	public ResponseEntity<ErrorResponse> handleAuthenticationException(BadCredentialsException ex,
+			HttpServletRequest request) {
+		String path = request.getRequestURI();
+		
+		log.warn("Authentication failed for request at {}: {}", path, ex.getMessage());
+
+		return ResponseEntity.status(ErrorCode.INVALID_CREDENTIALS.getStatus())
+				.body(buildErrorResponse(ErrorCode.INVALID_CREDENTIALS, path, null));
+	}
+
+	@ExceptionHandler(InternalAuthenticationServiceException.class)
+	public ResponseEntity<ErrorResponse> handleInternalAuthError(InternalAuthenticationServiceException ex,
+			HttpServletRequest request) {
+		String path = request.getRequestURI();
+		
+		log.error("Internal error during authentication at {}: {}", path, ex.getMessage(), ex);
+
+		return ResponseEntity.status(ErrorCode.INTERNAL_ERROR.getStatus())
+				.body(buildErrorResponse(ErrorCode.INTERNAL_ERROR, path, null));
 	}
 
 	@ExceptionHandler(BusinessException.class)
-	public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException e,
-			HttpServletRequest request) {
+	public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException e, HttpServletRequest request) {
 		String path = request.getRequestURI();
 
-		log.warn("BusinessException occurred: code={}, message={}, path={}",
-			e.getErrorCode().name(),
-			e.getErrorCode().getMessage(),
-			path
-		);
+		log.warn("BusinessException occurred: code={}, message={}, path={}", e.getErrorCode().name(),
+				e.getErrorCode().getMessage(), path);
 
-		return ResponseEntity
-				.status(HttpStatus.UNAUTHORIZED)
-				.body(new ErrorResponse(
-						HttpStatus.UNAUTHORIZED.getReasonPhrase(),
-						e.getErrorCode().name(),
-						e.getErrorCode().getMessage(),
-						path,
-						LocalDateTime.now()
-					)
-				);
+		return ResponseEntity.status(e.getErrorCode().getStatus())
+				.body(buildErrorResponse(e.getErrorCode(), path, null));
 	}
-	
+
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	public ResponseEntity<ErrorResponse> handleValidationException(MethodArgumentNotValidException e,
 			HttpServletRequest request) {
@@ -73,30 +69,27 @@ public class GlobalExceptionHandler {
 				);
 
 		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-				.body(new ErrorResponse(
-						HttpStatus.BAD_REQUEST.getReasonPhrase(),
-						ErrorCode.VALIDATION_FAILED.name(),
-						ErrorCode.VALIDATION_FAILED.getMessage(),
-						request.getRequestURI(),
-						errors,
-						LocalDateTime.now()
-					)
-				);
+				.body(buildErrorResponse(ErrorCode.VALIDATION_FAILED, request.getRequestURI(), errors));
 	}
 
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ErrorResponse> handleGenericException(Exception e, HttpServletRequest request) {
+		String path = request.getRequestURI();
 
-		log.error("Unexpected error at {}: {}", request.getRequestURI(), e.getMessage(), e);
+		log.error("Unexpected error at {}: {}", path, e.getMessage(), e);
 
-		return ResponseEntity
-				.status(HttpStatus.INTERNAL_SERVER_ERROR)
-				.body(new ErrorResponse(
-					HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase(),
-					ErrorCode.INTERNAL_ERROR.name(),
-					ErrorCode.INTERNAL_ERROR.getMessage(),
-					request.getRequestURI(),
-					LocalDateTime.now()
-				));
+		return ResponseEntity.status(ErrorCode.INTERNAL_ERROR.getStatus())
+				.body(buildErrorResponse(ErrorCode.INTERNAL_ERROR, path, null));
+	}
+
+	private ErrorResponse buildErrorResponse(ErrorCode errorCode, String path, Map<String, String> errors) {
+		return new ErrorResponse(
+				errorCode.getStatus().getReasonPhrase(),
+				errorCode.name(),
+				errorCode.getMessage(),
+				path,
+				errors,
+				LocalDateTime.now()
+			);
 	}
 }

@@ -61,7 +61,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 			}
 		} catch (ExpiredJwtException e) {
 			log.warn("JWT token expired: {}", e.getMessage());
-			request.setAttribute("JWT_ERROR_CODE", ErrorCode.TOKEN_EXPIRED.name());
+			request.setAttribute("JWT_ERROR_CODE", ErrorCode.TOKEN_EXPIRED);
 			SecurityContextHolder.clearContext();
 		} catch (JwtException e) {
 			log.warn("Invalid JWT token: {}", e.getMessage());

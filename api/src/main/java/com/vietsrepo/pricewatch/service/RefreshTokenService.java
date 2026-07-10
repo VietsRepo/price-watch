@@ -1,13 +1,9 @@
 package com.vietsrepo.pricewatch.service;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
-import java.util.HexFormat;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +14,7 @@ import com.vietsrepo.pricewatch.enums.ErrorCode;
 import com.vietsrepo.pricewatch.exception.BusinessException;
 import com.vietsrepo.pricewatch.properties.JwtProperties;
 import com.vietsrepo.pricewatch.repository.RefreshTokenRepository;
+import com.vietsrepo.pricewatch.utils.HashUtils;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,7 +38,7 @@ public class RefreshTokenService {
 
 		RefreshToken refreshToken = new RefreshToken();
 		refreshToken.setUser(user);
-		refreshToken.setTokenHash(sha256(token));
+		refreshToken.setTokenHash(HashUtils.sha256(token));
 		refreshToken.setExpiresAt(Instant.now().plus(jwtProperties.getRefreshTokenExpiration(), ChronoUnit.DAYS));
 		
 		repository.save(refreshToken);
@@ -50,7 +47,7 @@ public class RefreshTokenService {
 	}
 	
 	public RefreshToken verify(String rawToken) {
-		String hash = sha256(rawToken);
+		String hash = HashUtils.sha256(rawToken);
 
 		RefreshToken token = repository.findByTokenHash(hash).orElseThrow(
 			() -> new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID)
@@ -71,7 +68,7 @@ public class RefreshTokenService {
 
 	@Transactional
 	public void revoke(String rawToken) {
-		String hash = sha256(rawToken);
+		String hash = HashUtils.sha256(rawToken);
 
 		RefreshToken token = repository.findByTokenHash(hash).orElseThrow(
 			() -> new BusinessException(ErrorCode.REFRESH_TOKEN_INVALID)
@@ -82,16 +79,5 @@ public class RefreshTokenService {
 		}
 
 		token.setRevokedAt(Instant.now());
-	}
-	
-	private String sha256(String value) {
-		try {
-			MessageDigest digest = MessageDigest.getInstance("SHA-256");
-			byte[] hash = digest.digest(value.getBytes(StandardCharsets.UTF_8));
-
-			return HexFormat.of().formatHex(hash);
-		} catch (NoSuchAlgorithmException e) {
-			throw new IllegalStateException("SHA-256 not available", e);
-		}
 	}
 }

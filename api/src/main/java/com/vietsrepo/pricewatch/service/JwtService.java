@@ -47,6 +47,7 @@ public class JwtService {
 		return extractClaims(token).getSubject();
 	}
 	
+	// TODO: check token revocation (Redis) once implemented NOSONAR
 	public boolean isTokenValid(UserDetails userDetails) {
 		if (!userDetails.isEnabled()) {
 			return false;
