@@ -1,7 +1,7 @@
 package com.vietsrepo.pricewatch.security;
 
 import static com.vietsrepo.pricewatch.testsupport.auth.AuthTestConstants.ACCESS_TOKEN;
-import static com.vietsrepo.pricewatch.testsupport.auth.AuthTestConstants.USERNAME;
+import static com.vietsrepo.pricewatch.testsupport.auth.AuthTestConstants.USER_ID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -79,7 +79,7 @@ class JwtAuthFilterTest {
 	@DisplayName("Should skip authentication when username is null")
 	void should_skip_when_username_is_null() throws ServletException, IOException {
 		request.addHeader("Authorization", "Bearer " + ACCESS_TOKEN);
-		when(jwtService.extractUsername(ACCESS_TOKEN)).thenReturn(null);
+		when(jwtService.extractUserId(ACCESS_TOKEN)).thenReturn(null);
 		
 		filter.doFilterInternal(request, response, filterChain);
 
@@ -92,7 +92,7 @@ class JwtAuthFilterTest {
 	@DisplayName("Should not overwrite authentication when already authenticated")
 	void should_skip_when_authentication_is_not_null() throws ServletException, IOException {
 		request.addHeader("Authorization", "Bearer " + ACCESS_TOKEN);
-		when(jwtService.extractUsername(ACCESS_TOKEN)).thenReturn(USERNAME);
+		when(jwtService.extractUserId(ACCESS_TOKEN)).thenReturn(USER_ID);
 		CustomUserDetails userDetails = new CustomUserDetails(UserTestFixtures.defaultUserBuilder().build());
 		
 		Authentication existingAuth = new UsernamePasswordAuthenticationToken(
@@ -111,7 +111,7 @@ class JwtAuthFilterTest {
 	@DisplayName("Should skip authentication when username is null & authentication is not null")
 	void should_skip_when_username_is_null_and_authentication_is_not_null() throws ServletException, IOException {
 		request.addHeader("Authorization", "Bearer " + ACCESS_TOKEN);
-	    when(jwtService.extractUsername(ACCESS_TOKEN)).thenReturn(null);
+	    when(jwtService.extractUserId(ACCESS_TOKEN)).thenReturn(null);
 		
 		CustomUserDetails userDetails = new CustomUserDetails(UserTestFixtures.defaultUserBuilder().build());
 		
@@ -133,8 +133,8 @@ class JwtAuthFilterTest {
 		request.addHeader("Authorization", "Bearer " + ACCESS_TOKEN);
 		CustomUserDetails userDetails = new CustomUserDetails(UserTestFixtures.defaultUserBuilder().build());
 		
-		when(jwtService.extractUsername(ACCESS_TOKEN)).thenReturn(USERNAME);
-		when(customUserDetailsService.loadUserByUsername(USERNAME)).thenReturn(userDetails);
+		when(jwtService.extractUserId(ACCESS_TOKEN)).thenReturn(USER_ID);
+		when(customUserDetailsService.loadUserById(USER_ID)).thenReturn(userDetails);
 		when(jwtService.isTokenValid(userDetails)).thenReturn(true);
 		
 		filter.doFilterInternal(request, response, filterChain);
@@ -150,8 +150,8 @@ class JwtAuthFilterTest {
 		request.addHeader("Authorization", "Bearer " + ACCESS_TOKEN);
 		CustomUserDetails userDetails = new CustomUserDetails(UserTestFixtures.defaultUserBuilder().build());
 		
-		when(jwtService.extractUsername(ACCESS_TOKEN)).thenReturn(USERNAME);
-		when(customUserDetailsService.loadUserByUsername(USERNAME)).thenReturn(userDetails);
+		when(jwtService.extractUserId(ACCESS_TOKEN)).thenReturn(USER_ID);
+		when(customUserDetailsService.loadUserById(USER_ID)).thenReturn(userDetails);
 		when(jwtService.isTokenValid(userDetails)).thenReturn(false);
 		
 		filter.doFilterInternal(request, response, filterChain);
@@ -171,7 +171,7 @@ class JwtAuthFilterTest {
 				userDetails, null, userDetails.getAuthorities()
 			)
 		);
-		when(jwtService.extractUsername(ACCESS_TOKEN)).thenThrow(new ExpiredJwtException(null, null, "JWT expired"));
+		when(jwtService.extractUserId(ACCESS_TOKEN)).thenThrow(new ExpiredJwtException(null, null, "JWT expired"));
 		
 		filter.doFilterInternal(request, response, filterChain);
 
@@ -192,7 +192,7 @@ class JwtAuthFilterTest {
 				userDetails, null, userDetails.getAuthorities()
 			)
 		);
-		when(jwtService.extractUsername(ACCESS_TOKEN)).thenThrow(new JwtException("JWT invalid"));
+		when(jwtService.extractUserId(ACCESS_TOKEN)).thenThrow(new JwtException("JWT invalid"));
 		
 		filter.doFilterInternal(request, response, filterChain);
 

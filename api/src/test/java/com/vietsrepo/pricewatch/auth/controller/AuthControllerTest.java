@@ -1,16 +1,21 @@
 package com.vietsrepo.pricewatch.auth.controller;
 
-import static com.vietsrepo.pricewatch.testsupport.auth.AuthTestConstants.*;
+import static com.vietsrepo.pricewatch.testsupport.auth.AuthTestConstants.ACCESS_TOKEN;
+import static com.vietsrepo.pricewatch.testsupport.auth.AuthTestConstants.EMAIL;
+import static com.vietsrepo.pricewatch.testsupport.auth.AuthTestConstants.JWT_EXPIRATION;
+import static com.vietsrepo.pricewatch.testsupport.auth.AuthTestConstants.PASSWORD;
+import static com.vietsrepo.pricewatch.testsupport.auth.AuthTestConstants.RAW_TOKEN;
+import static com.vietsrepo.pricewatch.testsupport.auth.AuthTestConstants.REFRESH_TOKEN;
+import static com.vietsrepo.pricewatch.testsupport.auth.AuthTestConstants.REFRESH_TOKEN_EXPIRATION;
+import static com.vietsrepo.pricewatch.testsupport.auth.AuthTestConstants.USERNAME;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -25,8 +30,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import com.vietsrepo.pricewatch.config.SecurityConfig;
 import com.vietsrepo.pricewatch.controller.AuthController;
+import com.vietsrepo.pricewatch.dto.AuthResponse;
 import com.vietsrepo.pricewatch.dto.LoginRequest;
-import com.vietsrepo.pricewatch.dto.LoginResponse;
 import com.vietsrepo.pricewatch.dto.RefreshTokenRequest;
 import com.vietsrepo.pricewatch.dto.RegisterRequest;
 import com.vietsrepo.pricewatch.dto.ValidationMessages;
@@ -70,7 +75,12 @@ class AuthControllerTest {
 		@DisplayName("Should return 200 when user login successfully")
 		void should_return_200_when_user_login_successfully() throws JacksonException, Exception {
 			LoginRequest request = new LoginRequest(USERNAME, PASSWORD);
-			LoginResponse response = new LoginResponse(ACCESS_TOKEN, REFRESH_TOKEN);
+			AuthResponse response = new AuthResponse(
+				ACCESS_TOKEN,
+				REFRESH_TOKEN,
+				JWT_EXPIRATION.toSeconds(),
+				REFRESH_TOKEN_EXPIRATION.toSeconds()
+			);
 		
 			when(service.login(request)).thenReturn(response);
 			
@@ -81,7 +91,9 @@ class AuthControllerTest {
 			)
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.accessToken").value(ACCESS_TOKEN))
-			.andExpect(jsonPath("$.refreshToken").value(REFRESH_TOKEN));
+			.andExpect(jsonPath("$.refreshToken").value(REFRESH_TOKEN))
+			.andExpect(jsonPath("$.expiresIn").value(JWT_EXPIRATION.toSeconds()))
+			.andExpect(jsonPath("$.refreshExpiresIn").value(REFRESH_TOKEN_EXPIRATION.toSeconds()));
 		}
 		
 		@Test
@@ -97,7 +109,7 @@ class AuthControllerTest {
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.name()))
 			.andExpect(jsonPath("$.message").value(ErrorCode.VALIDATION_FAILED.getMessage()))
-			.andExpect(jsonPath("$.errors.username").value(ValidationMessages.USERNAME_BLANK));
+			.andExpect(jsonPath("$.errors[0].message").value(ValidationMessages.USERNAME_BLANK));
 		}
 		
 		@Test
@@ -113,14 +125,14 @@ class AuthControllerTest {
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.name()))
 			.andExpect(jsonPath("$.message").value(ErrorCode.VALIDATION_FAILED.getMessage()))
-			.andExpect(jsonPath("$.errors.password").value(ValidationMessages.PASSWORD_BLANK));
+			.andExpect(jsonPath("$.errors[0].message").value(ValidationMessages.PASSWORD_BLANK));
 		}
 		
 		@Test
 		@DisplayName("Should return 400 when username and password are blank")
 		void should_return_400_when_username_and_password_are_blank() throws JacksonException, Exception {
 			LoginRequest request = new LoginRequest(" ", " ");
-			
+
 			mockMvc.perform(
 				post("/api/auth/login")
 				.contentType(MediaType.APPLICATION_JSON)
@@ -129,8 +141,9 @@ class AuthControllerTest {
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.name()))
 			.andExpect(jsonPath("$.message").value(ErrorCode.VALIDATION_FAILED.getMessage()))
-			.andExpect(jsonPath("$.errors.username").value(ValidationMessages.USERNAME_BLANK))
-			.andExpect(jsonPath("$.errors.password").value(ValidationMessages.PASSWORD_BLANK));
+			.andExpect(jsonPath("$.errors[*].message").value(
+				containsInAnyOrder(ValidationMessages.USERNAME_BLANK, ValidationMessages.PASSWORD_BLANK)
+			));
 		}
 		
 		@Test
@@ -159,23 +172,32 @@ class AuthControllerTest {
 		@Test
 		@DisplayName("Should return 201 when user register successfully")
 		void should_return_201_when_user_register_successfully() throws JacksonException, Exception {
-			RegisterRequest request = new RegisterRequest(EMAIL, USERNAME, PASSWORD);
+			RegisterRequest request = new RegisterRequest(EMAIL, PASSWORD);
+			AuthResponse response = new AuthResponse(
+				ACCESS_TOKEN,
+				REFRESH_TOKEN,
+				JWT_EXPIRATION.toSeconds(),
+				REFRESH_TOKEN_EXPIRATION.toSeconds()
+			);
 		
-			when(service.register(request)).thenReturn(UUID.fromString(USER_ID));
+			when(service.register(request)).thenReturn(response);
 			
 			mockMvc.perform(
 				post("/api/auth/register")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(objectMapper.writeValueAsString(request))
 			)
-			.andExpect(status().isCreated())
-			.andExpect(header().string("Location", "/api/users/" + USER_ID));
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.accessToken").value(ACCESS_TOKEN))
+			.andExpect(jsonPath("$.refreshToken").value(REFRESH_TOKEN))
+			.andExpect(jsonPath("$.expiresIn").value(JWT_EXPIRATION.toSeconds()))
+			.andExpect(jsonPath("$.refreshExpiresIn").value(REFRESH_TOKEN_EXPIRATION.toSeconds()));
 		}
 
 		@Test
 		@DisplayName("Should return 400 when email is blank")
 		void should_return_400_when_email_is_blank() throws JacksonException, Exception {
-			RegisterRequest request = new RegisterRequest("", USERNAME, PASSWORD);
+			RegisterRequest request = new RegisterRequest("", PASSWORD);
 			
 			mockMvc.perform(
 				post("/api/auth/register")
@@ -185,13 +207,13 @@ class AuthControllerTest {
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.name()))
 			.andExpect(jsonPath("$.message").value(ErrorCode.VALIDATION_FAILED.getMessage()))
-			.andExpect(jsonPath("$.errors.email").value(ValidationMessages.EMAIL_BLANK));
+			.andExpect(jsonPath("$.errors[0].message").value(ValidationMessages.EMAIL_BLANK));
 		}
 		
 		@Test
 		@DisplayName("Should return 400 when email is invalid")
 		void should_return_400_when_email_is_invalid() throws JacksonException, Exception {
-			RegisterRequest request = new RegisterRequest("invalid-email", USERNAME, PASSWORD);
+			RegisterRequest request = new RegisterRequest("invalid-email", PASSWORD);
 			
 			mockMvc.perform(
 				post("/api/auth/register")
@@ -201,29 +223,13 @@ class AuthControllerTest {
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.name()))
 			.andExpect(jsonPath("$.message").value(ErrorCode.VALIDATION_FAILED.getMessage()))
-			.andExpect(jsonPath("$.errors.email").value(ValidationMessages.EMAIL_INVALID));
-		}
-		
-		@Test
-		@DisplayName("Should return 400 when username is blank")
-		void should_return_400_when_username_is_blank() throws JacksonException, Exception {
-			RegisterRequest request = new RegisterRequest(EMAIL, " ", PASSWORD);
-			
-			mockMvc.perform(
-				post("/api/auth/register")
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(objectMapper.writeValueAsString(request))
-			)
-			.andExpect(status().isBadRequest())
-			.andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.name()))
-			.andExpect(jsonPath("$.message").value(ErrorCode.VALIDATION_FAILED.getMessage()))
-			.andExpect(jsonPath("$.errors.username").value(ValidationMessages.USERNAME_BLANK));
+			.andExpect(jsonPath("$.errors[0].message").value(ValidationMessages.EMAIL_INVALID));
 		}
 		
 		@Test
 		@DisplayName("Should return 400 when password is invalid")
 		void should_return_400_when_password_is_invalid() throws JacksonException, Exception {
-			RegisterRequest request = new RegisterRequest(EMAIL, USERNAME, "invalid-password");
+			RegisterRequest request = new RegisterRequest(EMAIL, "invalid-password");
 			
 			mockMvc.perform(
 				post("/api/auth/register")
@@ -233,13 +239,13 @@ class AuthControllerTest {
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value(ErrorCode.VALIDATION_FAILED.name()))
 			.andExpect(jsonPath("$.message").value(ErrorCode.VALIDATION_FAILED.getMessage()))
-			.andExpect(jsonPath("$.errors.password").value(ValidationMessages.PASSWORD_INVALID));
+			.andExpect(jsonPath("$.errors[0].message").value(ValidationMessages.PASSWORD_INVALID));
 		}
 		
 		@Test
-		@DisplayName("Should return 409 when email or username already taken")
-		void should_return_409_when_email_or_username_already_takend() throws JacksonException, Exception {
-			RegisterRequest request = new RegisterRequest(EMAIL, USERNAME, PASSWORD);
+		@DisplayName("Should return 409 when email already taken")
+		void should_return_409_when_email_already_takend() throws JacksonException, Exception {
+			RegisterRequest request = new RegisterRequest(EMAIL, PASSWORD);
 			
 			when(service.register(request)).thenThrow(new BusinessException(ErrorCode.CREDENTIAL_TAKEN));
 			
@@ -262,7 +268,12 @@ class AuthControllerTest {
 		@DisplayName("Should return 200 when refresh token successfully")
 		void should_return_200_when_refresh_token_successfully() throws JacksonException, Exception {
 			RefreshTokenRequest request = new RefreshTokenRequest(RAW_TOKEN);
-			LoginResponse response = new LoginResponse(ACCESS_TOKEN, REFRESH_TOKEN);
+			AuthResponse response = new AuthResponse(
+				ACCESS_TOKEN,
+				REFRESH_TOKEN,
+				JWT_EXPIRATION.toSeconds(),
+				REFRESH_TOKEN_EXPIRATION.toSeconds()
+			);
 		
 			when(service.refreshToken(request)).thenReturn(response);
 			
@@ -273,7 +284,9 @@ class AuthControllerTest {
 			)
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.accessToken").value(ACCESS_TOKEN))
-			.andExpect(jsonPath("$.refreshToken").value(REFRESH_TOKEN));
+			.andExpect(jsonPath("$.refreshToken").value(REFRESH_TOKEN))
+			.andExpect(jsonPath("$.expiresIn").value(JWT_EXPIRATION.toSeconds()))
+			.andExpect(jsonPath("$.refreshExpiresIn").value(REFRESH_TOKEN_EXPIRATION.toSeconds()));
 		}
 		
 		@Test

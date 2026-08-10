@@ -1,12 +1,14 @@
 package com.vietsrepo.pricewatch.auth.service;
 
-import static com.vietsrepo.pricewatch.testsupport.auth.AuthTestConstants.USERNAME;
+import static com.vietsrepo.pricewatch.testsupport.auth.AuthTestConstants.JWT_EXPIRATION;
+import static com.vietsrepo.pricewatch.testsupport.auth.AuthTestConstants.USER_ID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.util.Date;
+import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -33,7 +35,6 @@ class JwtServiceTest {
 	@InjectMocks
 	private JwtService service;
 	
-	private static final long JWT_EXPIRATION = 900000;
 	private static final String INVALID_TOKEN = "invalid-token";
 	private static final String ISSUER = "http://localhost:8080";
 
@@ -56,11 +57,11 @@ class JwtServiceTest {
 		void should_return_token_when_generate_token_success() {
 			stubJwtProperties();
 
-			String token = service.generateToken(USERNAME);
+			String token = service.generateToken(USER_ID);
 
 			assertThat(token).isNotBlank();
 			assertThat(service.extractClaims(token).getExpiration())
-					.isCloseTo(Date.from(Instant.now().plusMillis(JWT_EXPIRATION)), 2000);
+					.isCloseTo(Date.from(Instant.now().plus(JWT_EXPIRATION)), 2000);
 		}
 	}
 	
@@ -73,15 +74,15 @@ class JwtServiceTest {
 		void should_return_claims_when_token_valid() {
 			stubJwtProperties();
 
-			String token = service.generateToken(USERNAME);
+			String token = service.generateToken(USER_ID);
 
 			Claims claims = service.extractClaims(token);
 
 			assertThat(claims).isNotNull();
-			assertThat(claims.getSubject()).isEqualTo(USERNAME);
+			assertThat(claims.getSubject()).isEqualTo(USER_ID.toString());
 			assertThat(claims.getIssuedAt()).isCloseTo(Date.from(Instant.now()), 2000);
 			assertThat(claims.getIssuer()).isEqualTo(ISSUER);
-			assertThat(claims.getExpiration()).isCloseTo(Date.from(Instant.now().plusMillis(JWT_EXPIRATION)), 2000);
+			assertThat(claims.getExpiration()).isCloseTo(Date.from(Instant.now().plus(JWT_EXPIRATION)), 2000);
 
 		}
 
@@ -106,11 +107,11 @@ class JwtServiceTest {
 		void should_return_username_when_token_is_valid() {
 			stubJwtProperties();
 
-			String token = service.generateToken(USERNAME);
+			String token = service.generateToken(USER_ID);
 
-			String username = service.extractUsername(token);
+			UUID userId = service.extractUserId(token);
 
-			assertThat(username).isEqualTo(USERNAME);
+			assertThat(userId).isEqualTo(USER_ID);
 		}
 
 		@Test
@@ -118,7 +119,7 @@ class JwtServiceTest {
 		void should_throw_illegal_argument_exception_when_token_invalid() {
 			stubSigningKey();
 
-			assertThatThrownBy(() -> service.extractUsername(INVALID_TOKEN))
+			assertThatThrownBy(() -> service.extractUserId(INVALID_TOKEN))
 				.isInstanceOf(JwtException.class);
 		}
 	}
@@ -155,6 +156,19 @@ class JwtServiceTest {
 			);
 
 			assertThat(service.isTokenValid(customUserDetails)).isTrue();
+		}
+	}
+	
+	@Nested
+	@DisplayName("getExpirationSeconds()")
+	class GetExpirationSeconds {
+		
+		@Test
+		@DisplayName("Should return correct expiration in seconds")
+		void should_return_correct_expiration_in_seconds() {
+			when(jwtProperties.getExpiration()).thenReturn(JWT_EXPIRATION);
+			
+			assertThat(service.getExpirationSeconds()).isEqualTo(JWT_EXPIRATION.toSeconds());
 		}
 	}
 	

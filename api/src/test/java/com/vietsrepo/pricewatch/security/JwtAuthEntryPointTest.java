@@ -22,13 +22,13 @@ import com.vietsrepo.pricewatch.enums.ErrorCode;
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletResponse;
-import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 @ExtendWith(MockitoExtension.class)
 class JwtAuthEntryPointTest {
 
-	private final ObjectMapper objectMapper = new ObjectMapper();
-	private final JwtAuthEntryPoint entryPoint = new JwtAuthEntryPoint(objectMapper);
+	private final JsonMapper jsonMapper = new JsonMapper();
+	private final JwtAuthEntryPoint entryPoint = new JwtAuthEntryPoint(jsonMapper);
 	private final MockHttpServletRequest request = new MockHttpServletRequest();
 	private final MockHttpServletResponse response = new MockHttpServletResponse();
 	private static final String BAD_CREDENTIALS_MESSAGE = "Bad credentials";
@@ -88,6 +88,6 @@ class JwtAuthEntryPointTest {
 	}
 
 	private ErrorResponse readBody(MockHttpServletResponse response) {
-		return objectMapper.readValue(response.getContentAsByteArray(), ErrorResponse.class);
+		return jsonMapper.readValue(response.getContentAsByteArray(), ErrorResponse.class);
 	}
 }

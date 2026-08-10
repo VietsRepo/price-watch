@@ -1,5 +1,7 @@
 package com.vietsrepo.pricewatch.properties;
 
+import java.time.Duration;
+
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
@@ -14,9 +16,9 @@ public class JwtProperties {
 
 	private String issuer;
 
-	private long expiration;
+	private Duration expiration;
 	
-	private short refreshTokenExpiration;
+	private Duration refreshTokenExpiration;
 
 	private String secret;
 }

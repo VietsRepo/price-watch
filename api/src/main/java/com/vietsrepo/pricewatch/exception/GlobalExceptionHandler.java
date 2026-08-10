@@ -1,19 +1,19 @@
 package com.vietsrepo.pricewatch.exception;
 
 import java.time.LocalDateTime;
-import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Comparator;
+import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.InternalAuthenticationServiceException;
-import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.vietsrepo.pricewatch.dto.ErrorResponse;
+import com.vietsrepo.pricewatch.dto.ErrorResponse.FieldError;
 import com.vietsrepo.pricewatch.enums.ErrorCode;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -60,13 +60,13 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ErrorResponse> handleValidationException(MethodArgumentNotValidException e,
 			HttpServletRequest request) {
 
-		Map<String, String> errors = e.getBindingResult().getFieldErrors().stream()
-				.collect(Collectors
-				.toMap(
-					FieldError::getField,
-					FieldError::getDefaultMessage,
-					(existing, duplicate) -> existing)
-				);
+		List<ErrorResponse.FieldError> errors = e.getBindingResult().getFieldErrors().stream()
+				.map(fieldError -> new ErrorResponse.FieldError(
+					fieldError.getField(),
+					fieldError.getDefaultMessage()
+				))
+				.sorted(Comparator.comparing(ErrorResponse.FieldError::field))
+				.toList();
 
 		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
 				.body(buildErrorResponse(ErrorCode.VALIDATION_FAILED, request.getRequestURI(), errors));
@@ -82,7 +82,7 @@ public class GlobalExceptionHandler {
 				.body(buildErrorResponse(ErrorCode.INTERNAL_ERROR, path, null));
 	}
 
-	private ErrorResponse buildErrorResponse(ErrorCode errorCode, String path, Map<String, String> errors) {
+	private ErrorResponse buildErrorResponse(ErrorCode errorCode, String path, List<FieldError> errors) {
 		return new ErrorResponse(
 				errorCode.getStatus().getReasonPhrase(),
 				errorCode.name(),

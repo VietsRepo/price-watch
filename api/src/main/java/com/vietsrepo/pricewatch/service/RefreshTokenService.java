@@ -2,7 +2,6 @@ package com.vietsrepo.pricewatch.service;
 
 import java.security.SecureRandom;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 
 import org.springframework.stereotype.Service;
@@ -39,7 +38,7 @@ public class RefreshTokenService {
 		RefreshToken refreshToken = new RefreshToken();
 		refreshToken.setUser(user);
 		refreshToken.setTokenHash(HashUtils.sha256(token));
-		refreshToken.setExpiresAt(Instant.now().plus(jwtProperties.getRefreshTokenExpiration(), ChronoUnit.DAYS));
+		refreshToken.setExpiresAt(Instant.now().plus(jwtProperties.getRefreshTokenExpiration()));
 		
 		repository.save(refreshToken);
 		
@@ -79,5 +78,9 @@ public class RefreshTokenService {
 		}
 
 		token.setRevokedAt(Instant.now());
+	}
+	
+	public long getExpirationSeconds() {
+		return jwtProperties.getRefreshTokenExpiration().toSeconds();
 	}
 }

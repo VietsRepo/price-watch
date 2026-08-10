@@ -2,6 +2,7 @@ package com.vietsrepo.pricewatch.service;
 
 import java.time.Instant;
 import java.util.Date;
+import java.util.UUID;
 
 import javax.crypto.SecretKey;
 
@@ -22,12 +23,12 @@ public class JwtService {
 
 	private final JwtProperties jwtProperties;
 
-	public String generateToken(String username) {
-		Date expiration = Date.from(Instant.now().plusMillis(jwtProperties.getExpiration()));
+	public String generateToken(UUID userId) {
+		Date expiration = Date.from(Instant.now().plus(jwtProperties.getExpiration()));
 
 		return Jwts
 				.builder()
-				.subject(username)
+				.subject(userId.toString())
 				.issuedAt(Date.from(Instant.now()))
 				.issuer(jwtProperties.getIssuer())
 				.expiration(expiration)
@@ -43,8 +44,9 @@ public class JwtService {
 				.getPayload();
 	}
 
-	public String extractUsername(String token) {
-		return extractClaims(token).getSubject();
+	public UUID extractUserId(String token) {
+		String subject = extractClaims(token).getSubject();
+		return UUID.fromString(subject);
 	}
 	
 	// TODO: check token revocation (Redis) once implemented NOSONAR
@@ -58,6 +60,10 @@ public class JwtService {
 		}
 		
 		return true;
+	}
+	
+	public long getExpirationSeconds() {
+		return jwtProperties.getExpiration().toSeconds();
 	}
 
 	private SecretKey getSigningKey() {

@@ -1,15 +1,13 @@
 package com.vietsrepo.pricewatch.service;
 
-import java.util.UUID;
-
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.vietsrepo.pricewatch.dto.AuthResponse;
 import com.vietsrepo.pricewatch.dto.LoginRequest;
-import com.vietsrepo.pricewatch.dto.LoginResponse;
 import com.vietsrepo.pricewatch.dto.RefreshTokenRequest;
 import com.vietsrepo.pricewatch.dto.RegisterRequest;
 import com.vietsrepo.pricewatch.entity.RefreshToken;
@@ -32,39 +30,51 @@ public class AuthService {
 	private final UserRepository userRepository;
 	private final BCryptPasswordEncoder encoder;
 
-	public LoginResponse login(LoginRequest request) {
+	public AuthResponse login(LoginRequest request) {
 		Authentication authentication = authenticationManager.authenticate(
 			new UsernamePasswordAuthenticationToken(
-					request.username(), request.password()
+				request.username(), request.password()
 			)
 		);
 
 		CustomUserDetails user = (CustomUserDetails) authentication.getPrincipal();
 
-		String accessToken = jwtService.generateToken(user.getUsername()); // NOSONAR
+		String accessToken = jwtService.generateToken(user.getId()); // NOSONAR
 		String refreshToken = refreshTokenService.create(user.getUser());
 
-		return new LoginResponse(accessToken, refreshToken);
+		return new AuthResponse(
+			accessToken,
+			refreshToken,
+			jwtService.getExpirationSeconds(),
+			refreshTokenService.getExpirationSeconds()
+		);
 	}
 	
-	public UUID register(RegisterRequest request) {
-		if (userRepository.existsByEmailOrUsername(request.email(), request.username())) {
+	public AuthResponse register(RegisterRequest request) {
+		if (userRepository.existsByEmail(request.email())) {
 			throw new BusinessException(ErrorCode.CREDENTIAL_TAKEN);
 		}
 		
-		User user = new User(
-			request.email(),
-			request.username(),
-			encoder.encode(request.password()),
-			Role.USER
+		User user = User.builder()
+			.email(request.email())
+			.password(encoder.encode(request.password()))
+			.role(Role.USER)
+			.build();
+		
+		User savedUser = userRepository.save(user);
+		
+		String accessToken = jwtService.generateToken(savedUser.getId());
+		String refreshToken = refreshTokenService.create(savedUser);
+		
+		return new AuthResponse(
+			accessToken,
+			refreshToken,
+			jwtService.getExpirationSeconds(),
+			refreshTokenService.getExpirationSeconds()
 		);
-		
-		User userSaved = userRepository.save(user);
-		
-		return userSaved.getId();
 	}
 
-	public LoginResponse refreshToken(RefreshTokenRequest request) {
+	public AuthResponse refreshToken(RefreshTokenRequest request) {
 		// Verify old refreshToken
 		RefreshToken oldToken = refreshTokenService.verify(request.refreshToken());
 		
@@ -73,10 +83,15 @@ public class AuthService {
 		// Rotate: revoke old token
 		refreshTokenService.revoke(request.refreshToken());
 
-		String accessToken = jwtService.generateToken(user.getUsername());
+		String accessToken = jwtService.generateToken(user.getId());
 		String refreshToken = refreshTokenService.create(user);
 
-		return new LoginResponse(accessToken, refreshToken);
+		return new AuthResponse(
+			accessToken,
+			refreshToken,
+			jwtService.getExpirationSeconds(),
+			refreshTokenService.getExpirationSeconds()
+		);
 	}
 	
 	public void logout(RefreshTokenRequest request) {

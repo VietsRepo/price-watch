@@ -1,11 +1,14 @@
 package com.vietsrepo.pricewatch.testsupport.auth;
 
+import java.time.Duration;
+import java.util.UUID;
+
 public final class AuthTestConstants {
 
 	private AuthTestConstants() {
 	}
 
-	public static final String USER_ID = "fdc05c3a-a1c1-47bb-b10c-2cd443870f48";
+	public static final UUID USER_ID = UUID.fromString("fdc05c3a-a1c1-47bb-b10c-2cd443870f48");
 	public static final String EMAIL = "hello@gmail.com";
 	public static final String USERNAME = "hello";
 	public static final String PASSWORD = "Password1!";
@@ -15,5 +18,6 @@ public final class AuthTestConstants {
 	public static final String REFRESH_TOKEN = "u8u9H8nWysTUwTyaWwrbbAsUIoNjGacqDI-55oczrdQ";
 	public static final String RAW_TOKEN = REFRESH_TOKEN;
 	public static final String TOKEN_HASH = "93b7813bbc6e8d6dd7d9bcc86e01be60f55b5b6c11e94f6409f7289e191443b1";
-	public static final short REFRESH_TOKEN_EXPIRATION = 30;
+	public static final Duration JWT_EXPIRATION = Duration.ofMinutes(15);
+	public static final Duration REFRESH_TOKEN_EXPIRATION = Duration.ofDays(30);
 }

@@ -5,7 +5,6 @@ import static com.vietsrepo.pricewatch.testsupport.auth.AuthTestConstants.TOKEN_
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -42,7 +41,7 @@ class RefreshTokenRepositoryTest {
 		RefreshToken refreshToken = RefreshToken.builder()
 			.tokenHash(TOKEN_HASH)
 			.user(user)
-			.expiresAt(Instant.now().plus(REFRESH_TOKEN_EXPIRATION, ChronoUnit.DAYS))
+			.expiresAt(Instant.now().plus(REFRESH_TOKEN_EXPIRATION))
 			.build();
 
 		return repository.save(refreshToken);

@@ -11,7 +11,7 @@ public enum ErrorCode {
 	REFRESH_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "Invalid refresh token"),
 	REFRESH_TOKEN_REVOKED(HttpStatus.UNAUTHORIZED, "Refresh token revoked"),
 	REFRESH_TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "Refresh token expired"),
-	CREDENTIAL_TAKEN(HttpStatus.CONFLICT, "Email or username already taken"),
+	CREDENTIAL_TAKEN(HttpStatus.CONFLICT, "Email already taken"),
 	
 	// GENERAL
 	VALIDATION_FAILED(HttpStatus.BAD_REQUEST, "Validation failed"),

@@ -2,8 +2,10 @@ package com.vietsrepo.pricewatch.auth.service;
 
 import static com.vietsrepo.pricewatch.testsupport.auth.AuthTestConstants.PASSWORD;
 import static com.vietsrepo.pricewatch.testsupport.auth.AuthTestConstants.USERNAME;
+import static com.vietsrepo.pricewatch.testsupport.auth.AuthTestConstants.USER_ID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
@@ -61,6 +63,36 @@ class CustomUserDetailsServiceTest {
 			assertThatThrownBy(() -> service.loadUserByUsername(USERNAME))
 				.isInstanceOf(UsernameNotFoundException.class)
 				.hasMessage("User not found with identity: " + USERNAME);
+		}
+	}
+	
+	@Nested
+	@DisplayName("loadUserById()")
+	class LoadUserById {
+		
+		@Test
+		@DisplayName("Should return UserDetails when userId match")
+		void should_return_user_details_when_identity_match() {
+			when(userRepository.findById(any()))
+				.thenReturn(Optional.of(UserTestFixtures.defaultUserBuilder().build()));
+			
+			UserDetails userDetails = service.loadUserById(USER_ID);
+			
+			assertThat(userDetails.getUsername()).isEqualTo(USERNAME);
+			assertThat(userDetails.getPassword()).isEqualTo(PASSWORD);
+			assertThat(userDetails.getAuthorities())
+				.extracting(GrantedAuthority::getAuthority)
+				.containsExactly("ROLE_" + Role.USER.name());
+		}
+		
+		@Test
+		@DisplayName("Should throw an UsernameNotFoundException when userId does not match")
+		void should_throw_username_not_found_exception_when_identiy_does_not_match() {
+			when(userRepository.findById(any())).thenReturn(Optional.empty());
+			
+			assertThatThrownBy(() -> service.loadUserById(USER_ID))
+				.isInstanceOf(UsernameNotFoundException.class)
+				.hasMessage("User not found with id: " + USER_ID);
 		}
 	}
 }

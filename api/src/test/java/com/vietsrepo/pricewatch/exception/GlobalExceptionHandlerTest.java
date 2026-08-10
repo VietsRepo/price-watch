@@ -1,6 +1,7 @@
 package com.vietsrepo.pricewatch.exception;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -50,12 +51,12 @@ class GlobalExceptionHandlerTest {
 	}
 	
 	@Test
-	@DisplayName("Should keep first error when a field has multiple validation errors")
-	void should_keep_first_error_when_field_has_multiple_errors() {
+	@DisplayName("Should keep all errors when a field has multiple validation errors")
+	void should_keep_all_errors_when_field_has_multiple_errors() {
 		String path = "/api/auth/register";
 		String emailField = "email";
 		when(request.getRequestURI()).thenReturn(path);
-		
+
 		FieldError firstError = new FieldError("registerRequest", emailField, ValidationMessages.EMAIL_BLANK);
 		FieldError secondError = new FieldError("registerRequest", emailField, ValidationMessages.EMAIL_INVALID);
 
@@ -65,9 +66,12 @@ class GlobalExceptionHandlerTest {
 		ResponseEntity<ErrorResponse> response = handler.handleValidationException(exception, request);
 
 		assertThat(response.getStatusCode()).isEqualTo(ErrorCode.VALIDATION_FAILED.getStatus());
-		assertThat(response.getBody().errors())
-			.containsEntry(emailField, ValidationMessages.EMAIL_BLANK)
-			.hasSize(1);
+		assertThat(response.getBody().errors()).hasSize(2)
+				.extracting(ErrorResponse.FieldError::field, ErrorResponse.FieldError::message)
+				.containsExactly(
+					tuple(emailField, ValidationMessages.EMAIL_BLANK),
+					tuple(emailField, ValidationMessages.EMAIL_INVALID)
+				);
 	}
 	
 	@Test

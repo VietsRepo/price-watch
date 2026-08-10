@@ -19,14 +19,14 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class JwtAuthEntryPoint implements AuthenticationEntryPoint {
 	
-	private final ObjectMapper mapper;
+	private final JsonMapper mapper;
 
 	@Override
 	public void commence(HttpServletRequest request, HttpServletResponse response,

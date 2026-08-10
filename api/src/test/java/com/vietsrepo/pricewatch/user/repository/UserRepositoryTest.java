@@ -27,7 +27,6 @@ class UserRepositoryTest {
 	private UserRepository repository;
 	
 	private static final String NON_EXISTING_EMAIL = "non-existing@gmail.com";
-	private static final String NON_EXISTING_USERNAME = "non-existing-username";
 
 	private User buildUser() {
 		return User.builder()
@@ -88,23 +87,15 @@ class UserRepositoryTest {
 		void should_return_true_when_email_exists() {
 			persistUser();
 			
-			assertThat(repository.existsByEmailOrUsername(EMAIL, NON_EXISTING_USERNAME)).isTrue();
+			assertThat(repository.existsByEmail(EMAIL)).isTrue();
 		}
 		
 		@Test
-		@DisplayName("Should return true when username exists")
-		void should_return_true_when_username_exists() {
+		@DisplayName("Should return false when email does not exists")
+		void should_return_false_when_email_does_not_exists() {
 			persistUser();
 			
-			assertThat(repository.existsByEmailOrUsername(NON_EXISTING_EMAIL, USERNAME)).isTrue();
-		}
-		
-		@Test
-		@DisplayName("Should return false when neither email nor username exists")
-		void should_return_false_when_email_or_username_does_not_exist() {
-			persistUser();
-			
-			assertThat(repository.existsByEmailOrUsername(NON_EXISTING_EMAIL, NON_EXISTING_USERNAME)).isFalse();
+			assertThat(repository.existsByEmail(NON_EXISTING_EMAIL)).isFalse();
 		}
 	}
 }

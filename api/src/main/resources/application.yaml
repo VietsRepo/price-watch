@@ -21,13 +21,12 @@ spring:
   # flyway configuration
   flyway:
     enabled: true
-    baseline-on-migrate: true
 
 # jwt configuration
 jwt:
   issuer: ${JWT_ISSUER:http://localhost:8080}
-  expiration: ${JWT_EXPIRATION:900000} # ms
-  refreshTokenExpiration: ${JWT_REFRESH_TOKEN_EXPIRATION:30} # days
+  expiration: ${JWT_EXPIRATION:15m}
+  refreshTokenExpiration: ${JWT_REFRESH_TOKEN_EXPIRATION:30d}
   secret: ${JWT_SECRET}
 
 logging:

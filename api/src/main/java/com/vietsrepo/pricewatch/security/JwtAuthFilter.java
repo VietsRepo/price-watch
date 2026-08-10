@@ -1,6 +1,7 @@
 package com.vietsrepo.pricewatch.security;
 
 import java.io.IOException;
+import java.util.UUID;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -44,10 +45,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 		String token = bearerToken.substring(BEARER_PREFIX.length()).trim();
 		
 		try {
-			String username = jwtService.extractUsername(token);
+			UUID userId = jwtService.extractUserId(token);
 			
-			if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-				UserDetails userDetails = customUserDetailsService.loadUserByUsername(username);
+			if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+				UserDetails userDetails = customUserDetailsService.loadUserById(userId);
 				
 				if (jwtService.isTokenValid(userDetails)) {
 					UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(

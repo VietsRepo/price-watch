@@ -1,8 +1,17 @@
 package com.vietsrepo.pricewatch.auth.service;
 
-import static com.vietsrepo.pricewatch.testsupport.auth.AuthTestConstants.*;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static com.vietsrepo.pricewatch.testsupport.auth.AuthTestConstants.ACCESS_TOKEN;
+import static com.vietsrepo.pricewatch.testsupport.auth.AuthTestConstants.EMAIL;
+import static com.vietsrepo.pricewatch.testsupport.auth.AuthTestConstants.JWT_EXPIRATION;
+import static com.vietsrepo.pricewatch.testsupport.auth.AuthTestConstants.PASSWORD;
+import static com.vietsrepo.pricewatch.testsupport.auth.AuthTestConstants.RAW_TOKEN;
+import static com.vietsrepo.pricewatch.testsupport.auth.AuthTestConstants.REFRESH_TOKEN;
+import static com.vietsrepo.pricewatch.testsupport.auth.AuthTestConstants.REFRESH_TOKEN_EXPIRATION;
+import static com.vietsrepo.pricewatch.testsupport.auth.AuthTestConstants.TOKEN_HASH;
+import static com.vietsrepo.pricewatch.testsupport.auth.AuthTestConstants.USERNAME;
+import static com.vietsrepo.pricewatch.testsupport.auth.AuthTestConstants.USER_ID;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.times;
@@ -10,7 +19,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 import org.junit.jupiter.api.DisplayName;
@@ -27,8 +35,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
+import com.vietsrepo.pricewatch.dto.AuthResponse;
 import com.vietsrepo.pricewatch.dto.LoginRequest;
-import com.vietsrepo.pricewatch.dto.LoginResponse;
 import com.vietsrepo.pricewatch.dto.RefreshTokenRequest;
 import com.vietsrepo.pricewatch.dto.RegisterRequest;
 import com.vietsrepo.pricewatch.entity.RefreshToken;
@@ -83,14 +91,18 @@ class AuthServiceTest {
 			when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
 				.thenReturn(authentication);
 			when(authentication.getPrincipal()).thenReturn(customUserDetails);
-			when(jwtService.generateToken(loginRequest.username())).thenReturn(ACCESS_TOKEN);
+			when(jwtService.generateToken(customUserDetails.getId())).thenReturn(ACCESS_TOKEN);
 			when(refreshTokenService.create(customUserDetails.getUser())).thenReturn(REFRESH_TOKEN);
+			when(jwtService.getExpirationSeconds()).thenReturn(JWT_EXPIRATION.toSeconds());
+			when(refreshTokenService.getExpirationSeconds()).thenReturn(REFRESH_TOKEN_EXPIRATION.toSeconds());
 
-			LoginResponse loginResponse = service.login(loginRequest);
+			AuthResponse authResponse = service.login(loginRequest);
 
-			assertThat(loginResponse).isNotNull();
-			assertThat(loginResponse.accessToken()).isEqualTo(ACCESS_TOKEN);
-			assertThat(loginResponse.refreshToken()).isEqualTo(REFRESH_TOKEN);
+			assertThat(authResponse).isNotNull();
+			assertThat(authResponse.accessToken()).isEqualTo(ACCESS_TOKEN);
+			assertThat(authResponse.refreshToken()).isEqualTo(REFRESH_TOKEN);
+			assertThat(authResponse.expiresIn()).isEqualTo(JWT_EXPIRATION.toSeconds());
+			assertThat(authResponse.refreshExpiresIn()).isEqualTo(REFRESH_TOKEN_EXPIRATION.toSeconds());
 		}
 		
 		@Test
@@ -111,12 +123,12 @@ class AuthServiceTest {
 	class Register {
 		
 		@Test
-		@DisplayName("Should throw a BusinessException when email or username is already taken")
-		void should_throw_business_exception_when_email_or_username_already_taken() {
-			when(userRepository.existsByEmailOrUsername(EMAIL, USERNAME))
+		@DisplayName("Should throw a BusinessException when email is already taken")
+		void should_throw_business_exception_when_email_already_taken() {
+			when(userRepository.existsByEmail(EMAIL))
 				.thenReturn(true);
 			
-			RegisterRequest request = new RegisterRequest(EMAIL, USERNAME, PASSWORD);
+			RegisterRequest request = new RegisterRequest(EMAIL, PASSWORD);
 			
 			assertThatThrownBy(() -> service.register(request))
 				.isInstanceOf(BusinessException.class)
@@ -124,30 +136,36 @@ class AuthServiceTest {
 		}
 		
 		@Test
-		@DisplayName("Should return an userId when register success")
+		@DisplayName("Should return an RegisterResponse when register success")
 		void should_return_user_id_when_register_success() {
-			when(userRepository.existsByEmailOrUsername(EMAIL, USERNAME))
-				.thenReturn(false);
+			when(userRepository.existsByEmail(EMAIL)).thenReturn(false);
 			when(encoder.encode(anyString())).thenReturn(PASSWORD_ENCODED);
 			ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
 			when(userRepository.save(captor.capture())).thenAnswer(inv -> {
 				User user = inv.getArgument(0);
-				user.setId(UUID.fromString(USER_ID));
+				user.setId(USER_ID);
 				return user;
 			});
 			
-			RegisterRequest request = new RegisterRequest(EMAIL, USERNAME, PASSWORD);
+			when(jwtService.generateToken(any(UUID.class))).thenReturn(ACCESS_TOKEN);
+			when(refreshTokenService.create(any(User.class))).thenReturn(REFRESH_TOKEN);
+			when(jwtService.getExpirationSeconds()).thenReturn(JWT_EXPIRATION.toSeconds());
+			when(refreshTokenService.getExpirationSeconds()).thenReturn(REFRESH_TOKEN_EXPIRATION.toSeconds());
 			
-			UUID userId = service.register(request);
+			RegisterRequest request = new RegisterRequest(EMAIL, PASSWORD);
 			
-			assertThat(userId).isNotNull();
+			AuthResponse authResponse = service.register(request);
 			
 			User user = captor.getValue();
-			
+
+			assertThat(user.getId()).isNotNull();
 			assertThat(user.getEmail()).isEqualTo(EMAIL);
-			assertThat(user.getUsername()).isEqualTo(USERNAME);
 			assertThat(user.getPassword()).isEqualTo(PASSWORD_ENCODED);
 			assertThat(user.getRole()).isEqualTo(Role.USER);
+			assertThat(authResponse.accessToken()).isEqualTo(ACCESS_TOKEN);
+			assertThat(authResponse.refreshToken()).isEqualTo(REFRESH_TOKEN);
+			assertThat(authResponse.expiresIn()).isEqualTo(JWT_EXPIRATION.toSeconds());
+			assertThat(authResponse.refreshExpiresIn()).isEqualTo(REFRESH_TOKEN_EXPIRATION.toSeconds());
 		}
 	}
 	
@@ -159,21 +177,27 @@ class AuthServiceTest {
 		@Test
 		@DisplayName("Should revoke old token and issue new tokens when refresh token succeeds")
 		void should_return_login_response_with_new_access_token_and_refresh_token_when_refresh_token_success() {
-			User user = UserTestFixtures.defaultUserBuilder().build();
+			User user = UserTestFixtures.defaultUserBuilder()
+				.id(USER_ID)
+				.build();
 			RefreshToken refreshToken = RefreshToken.builder()
 				.tokenHash(TOKEN_HASH)
 				.user(user)
-				.expiresAt(Instant.now().plus(REFRESH_TOKEN_EXPIRATION, ChronoUnit.DAYS))
+				.expiresAt(Instant.now().plus(REFRESH_TOKEN_EXPIRATION))
 				.build();
 
 			when(refreshTokenService.verify(anyString())).thenReturn(refreshToken);
-			when(jwtService.generateToken(anyString())).thenReturn(ACCESS_TOKEN);
+			when(jwtService.generateToken(any(UUID.class))).thenReturn(ACCESS_TOKEN);
 			when(refreshTokenService.create(any(User.class))).thenReturn(REFRESH_TOKEN);
+			when(jwtService.getExpirationSeconds()).thenReturn(JWT_EXPIRATION.toSeconds());
+			when(refreshTokenService.getExpirationSeconds()).thenReturn(REFRESH_TOKEN_EXPIRATION.toSeconds());
 
-			LoginResponse loginResponse = service.refreshToken(new RefreshTokenRequest(RAW_TOKEN));
+			AuthResponse authResponse = service.refreshToken(new RefreshTokenRequest(RAW_TOKEN));
 			
-			assertThat(loginResponse.accessToken()).isEqualTo(ACCESS_TOKEN);
-			assertThat(loginResponse.refreshToken()).isEqualTo(REFRESH_TOKEN);
+			assertThat(authResponse.accessToken()).isEqualTo(ACCESS_TOKEN);
+			assertThat(authResponse.refreshToken()).isEqualTo(REFRESH_TOKEN);
+			assertThat(authResponse.expiresIn()).isEqualTo(JWT_EXPIRATION.toSeconds());
+			assertThat(authResponse.refreshExpiresIn()).isEqualTo(REFRESH_TOKEN_EXPIRATION.toSeconds());
 			
 			verify(refreshTokenService, times(1)).revoke(RAW_TOKEN);
 			verify(refreshTokenService, times(1)).create(user);

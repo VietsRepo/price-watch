@@ -77,10 +77,20 @@ class RefreshTokenServiceTest {
 			
 			assertThat(saved.getTokenHash()).isEqualTo(HashUtils.sha256(rawToken));
 			assertThat(saved.getUser()).isEqualTo(user);
-			assertThat(saved.getExpiresAt()).isCloseTo(Instant.now().plus(REFRESH_TOKEN_EXPIRATION, ChronoUnit.DAYS),
+			assertThat(saved.getExpiresAt()).isCloseTo(Instant.now().plus(REFRESH_TOKEN_EXPIRATION),
 					within(2, ChronoUnit.SECONDS));
 
 			verify(repository, times(1)).save(any(RefreshToken.class));
+		}
+		
+		@Test
+		@DisplayName("Should generate unique tokens on each call")
+		void should_generate_unique_tokens_on_each_call() {
+			User user = UserTestFixtures.defaultUserBuilder().build();
+			String rawToken1 = service.create(user);
+			String rawToken2 = service.create(user);
+			
+			assertThat(rawToken1).isNotEqualTo(rawToken2);
 		}
 	}
 	
@@ -107,7 +117,7 @@ class RefreshTokenServiceTest {
 		void should_throw_business_exception_when_refresh_token_revoked() {
 			RefreshToken refreshToken = buildRefreshToken(
 				TOKEN_HASH,
-				Instant.now().plus(REFRESH_TOKEN_EXPIRATION, ChronoUnit.DAYS),
+				Instant.now().plus(REFRESH_TOKEN_EXPIRATION),
 				Instant.now().plus(1, ChronoUnit.DAYS)
 			);
 
@@ -128,7 +138,7 @@ class RefreshTokenServiceTest {
 			
 			RefreshToken refreshToken = buildRefreshToken(
 				TOKEN_HASH,
-				Instant.now().minus(REFRESH_TOKEN_EXPIRATION, ChronoUnit.DAYS),
+				Instant.now().minus(REFRESH_TOKEN_EXPIRATION),
 				null
 			);
 
@@ -148,7 +158,7 @@ class RefreshTokenServiceTest {
 		void should_return_token_hash_when_verify_passed() {
 			RefreshToken refreshToken = buildRefreshToken(
 				TOKEN_HASH,
-				Instant.now().plus(REFRESH_TOKEN_EXPIRATION, ChronoUnit.DAYS),
+				Instant.now().plus(REFRESH_TOKEN_EXPIRATION),
 				null
 			);
 
@@ -182,7 +192,7 @@ class RefreshTokenServiceTest {
 		void should_not_update_revoked_at_when_already_revoked() {
 			RefreshToken refreshToken = buildRefreshToken(
 				TOKEN_HASH,
-				Instant.now().plus(REFRESH_TOKEN_EXPIRATION, ChronoUnit.DAYS),
+				Instant.now().plus(REFRESH_TOKEN_EXPIRATION),
 				Instant.now().plus(1, ChronoUnit.DAYS)
 			);
 
@@ -199,7 +209,7 @@ class RefreshTokenServiceTest {
 		void should_update_revoked_at_when_revoked_at_is_null() {
 			RefreshToken refreshToken = buildRefreshToken(
 				TOKEN_HASH,
-				Instant.now().plus(REFRESH_TOKEN_EXPIRATION, ChronoUnit.DAYS),
+				Instant.now().plus(REFRESH_TOKEN_EXPIRATION),
 				null
 			);
 
@@ -209,6 +219,19 @@ class RefreshTokenServiceTest {
 
 			assertThat(refreshToken.getRevokedAt())
 				.isCloseTo(Instant.now(), within(2, ChronoUnit.SECONDS));
+		}
+	}
+	
+	@Nested
+	@DisplayName("getExpirationSeconds()")
+	class GetExpirationSeconds {
+		
+		@Test
+		@DisplayName("Should return correct expiration in seconds")
+		void should_return_correct_expiration_in_seconds() {
+			when(jwtProperties.getRefreshTokenExpiration()).thenReturn(REFRESH_TOKEN_EXPIRATION);
+			
+			assertThat(service.getExpirationSeconds()).isEqualTo(REFRESH_TOKEN_EXPIRATION.toSeconds());
 		}
 	}
 

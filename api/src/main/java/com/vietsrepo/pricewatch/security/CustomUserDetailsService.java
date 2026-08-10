@@ -1,5 +1,7 @@
 package com.vietsrepo.pricewatch.security;
 
+import java.util.UUID;
+
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -21,5 +23,10 @@ public class CustomUserDetailsService implements UserDetailsService {
 				.map(CustomUserDetails::new)
 				.orElseThrow(() -> new UsernameNotFoundException("User not found with identity: " + emailOrUsername));
 	}
-
+	
+	public UserDetails loadUserById(UUID id) throws UsernameNotFoundException {
+		return repository.findById(id)
+				.map(CustomUserDetails::new)
+				.orElseThrow(() -> new UsernameNotFoundException("User not found with id: " + id));
+	}
 }

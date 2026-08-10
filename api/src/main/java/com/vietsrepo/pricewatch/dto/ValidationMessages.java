@@ -12,7 +12,6 @@ public final class ValidationMessages {
 	public static final String PASSWORD_INVALID = """
 			Password must meet the following requirements:
 			- 8 to 32 characters
-			- At least one uppercase and one lowercase letter
-			- At least one number
-			- At least one special character""";
+			- At least one lowercase letter
+			- At least one number""";
 }
